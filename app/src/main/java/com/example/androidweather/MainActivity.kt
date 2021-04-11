@@ -1,10 +1,12 @@
 package com.example.androidweather.ui.overview
 
+import android.Manifest
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.navigation.findNavController
 import com.example.androidweather.R
 import com.example.androidweather.databinding.ActivityMainBinding
+import com.example.androidweather.manager.PermissionManager
 
 
 class MainActivity : AppCompatActivity() {

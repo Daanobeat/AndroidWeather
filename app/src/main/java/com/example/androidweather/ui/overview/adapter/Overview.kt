@@ -1,5 +1,6 @@
 package com.example.androidweather.ui.overview.adapter
 
+import android.Manifest
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -16,6 +17,8 @@ import com.example.androidweather.data.local.Weather
 import com.example.androidweather.data.local.WeatherDatabase
 import com.example.androidweather.data.model.Item
 import com.example.androidweather.databinding.FragmentOverviewBinding
+import com.example.androidweather.manager.LocationManager
+import com.example.androidweather.manager.PermissionManager
 import com.example.androidweather.remote.Remote
 import com.example.androidweather.ui.detail.Detail
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +28,22 @@ class OverviewView : Fragment() {
     private val viewModel: OverviewViewModel by viewModels()
     private lateinit var binding: FragmentOverviewBinding
     private val adapter = OverviewAdapter()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        PermissionManager.requestPermission(this) {
+            LocationManager.getLocation {
+                viewModel.getLocation(it)
+                println("Lat ${it.first}, Long: ${it.second}")
+            }
+        }
+        PermissionManager.checkForPermission(Manifest.permission.ACCESS_FINE_LOCATION){
+            LocationManager.getLocation {
+                viewModel.getLocation(it)
+                println("Lat ${it.first}, Long: ${it.second}")
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -42,24 +61,35 @@ class OverviewView : Fragment() {
         viewModel.listData.observe(viewLifecycleOwner, { list ->
             adapter.submitList(list)
         })
-        adapter.clickSubject.subscribe { findNavController().navigate(OverviewViewDirections.actionOverviewToDetail(it)) }
+        adapter.clickSubject.subscribe {
+            findNavController().navigate(
+                OverviewViewDirections.actionOverviewToDetail(
+                    it
+                )
+            )
+        }
     }
 }
 
-class OverviewViewModel() : ViewModel(){
+class OverviewViewModel() : ViewModel() {
 
     private var _isIndicatorVisible = MutableLiveData<Boolean>()
-    val isIndicatorVisible: LiveData<Boolean> get() =  _isIndicatorVisible
+    val isIndicatorVisible: LiveData<Boolean> get() = _isIndicatorVisible
 
     private var _listData = MutableLiveData<List<Item>>()
     val listData: LiveData<List<Item>> get() = _listData
 
-    init {
+    private lateinit var location:Pair<Double,Double>
+
+    fun getLocation(location:Pair<Double,Double>){
+        this.location = location
         getWeatherData()
     }
-    private fun getWeatherData(){
-        viewModelScope.launch(Dispatchers.IO){
-            WeatherDatabase.database.insertWeather(Remote.api.getWeather().list.map {
+
+    private fun getWeatherData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            WeatherDatabase.database.deleteAll()
+            WeatherDatabase.database.insertWeather(Remote.api.getWeather(lat = location.first,lon = location.second).list.map {
                 Weather(
                     dt = it.dt,
                     temp = it.main.temp,
